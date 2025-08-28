@@ -8,6 +8,7 @@ export default {
     strictPort: true,
   },
   preview: {
+    allowedHosts: ['mr-narrative-space-explorer.onrender.com'],
     port: 5005
   }
 };
