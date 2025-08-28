@@ -1,18 +1,13 @@
 // vite.config.js
 export default {
-  // don't allow automatic port switching as we need to know the port
+  root: '.',
+  publicDir: 'public',
   server: {
+    host: '0.0.0.0',
+    port: 3232,
     strictPort: true,
-    // host: "0.0.0.0",
-    host: true,
-    allowedHosts: true
   },
   preview: {
-    allowedHosts: ['trycloudflare.com'],
-  },
-  root: ".",
-  build: {
-    outDir: "../build",
-  },
-  publicDir: "../public",
+    port: 5005
+  }
 };
