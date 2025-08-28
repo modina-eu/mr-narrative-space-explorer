@@ -1,47 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AR Word Spawner + Drag + Pinch</title>
+
+  <!-- A-Frame and AR.js -->
   <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-  <script src="aframe-ar.js"></script>
-  <style>
-    body { margin: 0; overflow: hidden; font-family: sans-serif; }
-
-    #menuToggle {
-      position: fixed;
-      top: 1rem;
-      left: 1rem;
-      z-index: 1001;
-      padding: 0.5rem 1rem;
-      background: #333;
-      color: white;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-    }
-
-    #sideMenu {
-      position: fixed;
-      top: 0;
-      left: -320px;
-      width: 300px;
-      height: 100%;
-      background: white;
-      box-shadow: 2px 0 8px rgba(0,0,0,0.2);
-      padding: 1rem;
-      transition: left 0.3s ease;
-      z-index: 1000;
-      pointer-events: auto;
-    }
-    #sideMenu.open { left: 0; }
-
-    #textInput {
-      width: 100%;
-      height: 100px;
-      font-size: 16px;
-    }
-  </style>
+  <script src="/aframe-ar.js"></script>
 </head>
 <body>
 
@@ -53,154 +19,16 @@
 </div>
 
 <a-scene
-  embedded
-  vr-mode-ui="enabled: false"
-  arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: false;"
-  renderer="antialias: true; alpha: true"
+        embedded
+        vr-mode-ui="enabled: false"
+        arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: false;"
+        renderer="antialias: true; alpha: true"
 >
   <a-entity camera look-controls></a-entity>
 </a-scene>
 
-<script>
-const THREE = AFRAME.THREE;
-const scene = document.querySelector("a-scene");
-let words = [];
-const textInput = document.getElementById("textInput");
-let selected = null;
-let isDragging = false;
-let initialPinchDistance = null;
-let initialZ = null;
-let initialAngle = null;
-let initialRotationY = null;
+<!-- Your main JS file -->
+<script type="module" src="./main.js"></script>
 
-// Initialize corpus
-words = textInput.value.split(/\s+/).filter(w => w.length > 0);
-textInput.addEventListener("input", () => {
-  words = textInput.value.split(/\s+/).filter(w => w.length > 0);
-});
-
-// Toggle menu
-const menu = document.getElementById("sideMenu");
-document.getElementById("menuToggle").addEventListener("click", () => {
-  menu.classList.toggle("open");
-});
-
-// Spawn words
-scene.addEventListener("click", (e) => {
-  if (e.target.closest && e.target.closest("#sideMenu")) return;
-  if (words.length === 0) return;
-
-  const word = words[Math.floor(Math.random() * words.length)];
-
-  const camera = scene.camera;
-  const camPos = new THREE.Vector3();
-  const camDir = new THREE.Vector3();
-  camera.getWorldPosition(camPos);
-  camera.getWorldDirection(camDir);
-  camDir.multiplyScalar(2);
-  const spawnPos = camPos.clone().add(camDir);
-
-  const wrapper = document.createElement("a-entity");
-  wrapper.setAttribute("position", `${spawnPos.x} ${spawnPos.y} ${spawnPos.z}`);
-
-  const textEl = document.createElement("a-entity");
-  textEl.setAttribute("text", {value: word, align: "center", color: "#333", width: 3});
-
-  // Bigger collider for easier touch detection
-  const box = document.createElement("a-box");
-  box.setAttribute("scale", "3 1.5 0.2"); // increased from previous 2x1x0.1
-  box.setAttribute("material", "opacity:0; transparent:true");
-  box.classList.add("collider");
-
-  wrapper.appendChild(textEl);
-  wrapper.appendChild(box);
-  wrapper.object3D.lookAt(camPos);
-  scene.appendChild(wrapper);
-
-  // Enable selection
-  box.addEventListener("mousedown", () => selectWord(wrapper, textEl));
-  box.addEventListener("touchstart", () => selectWord(wrapper, textEl));
-});
-
-function selectWord(wrapper, textEl) {
-  selected = wrapper.object3D;
-  selected.textEl = textEl; // store text element for color change
-  isDragging = true;
-  // Highlight selected word
-  textEl.setAttribute("text", "color", "red");
-}
-
-// Drag & pinch & rotate
-const raycaster = new THREE.Raycaster();
-const plane = new THREE.Plane();
-const mouse = new THREE.Vector2();
-
-function updateMouse(evt) {
-  if (evt.touches && evt.touches.length === 1) {
-    mouse.x = (evt.touches[0].clientX / window.innerWidth) * 2 - 1;
-    mouse.y = -(evt.touches[0].clientY / window.innerHeight) * 2 + 1;
-  } else if (!evt.touches) {
-    mouse.x = (evt.clientX / window.innerWidth) * 2 - 1;
-    mouse.y = -(evt.clientY / window.innerHeight) * 2 + 1;
-  }
-}
-
-function moveSelected(evt) {
-  if (!isDragging || !selected) return;
-
-  // Two-finger pinch/twist
-  if (evt.touches && evt.touches.length === 2) {
-    const dx = evt.touches[0].clientX - evt.touches[1].clientX;
-    const dy = evt.touches[0].clientY - evt.touches[1].clientY;
-    const dist = Math.sqrt(dx*dx + dy*dy);
-    const angle = Math.atan2(dy, dx);
-
-    if (initialPinchDistance === null) {
-      initialPinchDistance = dist;
-      initialZ = selected.position.clone();
-      initialAngle = angle;
-      initialRotationY = selected.rotation.y;
-    } else {
-      // Move along camera direction (Z)
-      const scale = dist / initialPinchDistance;
-      const camDir = new THREE.Vector3();
-      scene.camera.getWorldDirection(camDir);
-      selected.position.lerp(initialZ.clone().add(camDir.multiplyScalar((scale-1)*2)), 0.4);
-
-      // Rotate around Y axis
-      const angleDelta = angle - initialAngle;
-      selected.rotation.y = initialRotationY + angleDelta*2; // rotate more sensitively
-    }
-    return;
-  }
-
-  // Single-finger drag (XY)
-  updateMouse(evt);
-  raycaster.setFromCamera(mouse, scene.camera);
-  const camDir = new THREE.Vector3();
-  scene.camera.getWorldDirection(camDir);
-  plane.setFromNormalAndCoplanarPoint(camDir, scene.camera.position.clone().add(camDir.multiplyScalar(1.5)));
-
-  const intersect = new THREE.Vector3();
-  raycaster.ray.intersectPlane(plane, intersect);
-  if (intersect) selected.position.lerp(intersect, 0.5);
-}
-
-window.addEventListener("mousemove", moveSelected);
-window.addEventListener("touchmove", moveSelected);
-
-window.addEventListener("mouseup", endDrag);
-window.addEventListener("touchend", endDrag);
-
-function endDrag() {
-  if (selected && selected.textEl) {
-    selected.textEl.setAttribute("text", "color", "#333"); // reset color
-  }
-  selected = null;
-  isDragging = false;
-  initialPinchDistance = null;
-  initialAngle = null;
-}
-</script>
 </body>
 </html>

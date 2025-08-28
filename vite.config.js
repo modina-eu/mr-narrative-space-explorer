@@ -10,7 +10,7 @@ export default {
   preview: {
     allowedHosts: ['trycloudflare.com'],
   },
-  root: "src",
+  root: ".",
   build: {
     outDir: "../build",
   },

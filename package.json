@@ -1,0 +1,19 @@
+{
+  "name": "mr-narrative-space-explorer",
+  "version": "1.0.0",
+  "description": "",
+  "main": "aframe-ar.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "start": "serve -s dist -l $PORT"
+  },
+  "devDependencies": {
+    "vite": "^5.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/modina-eu/mr-narrative-space-explorer.git"
+  },
+  "private": true
+}
