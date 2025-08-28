@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Word Spawner + Drag</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      min-height: 100vh;
+      margin: 0;
+      padding: 2rem;
+      background: #f7f7f7;
+      cursor: default;
+    }
+    /* Toggle button */
+    #menuToggle {
+      position: fixed;
+      top: 1rem;
+      left: 1rem;
+      z-index: 1001;
+      padding: 0.5rem 1rem;
+      background: #333;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    /* Side menu */
+    #sideMenu {
+      position: fixed;
+      top: 0;
+      left: -320px; /* hidden by default */
+      width: 300px;
+      height: 100%;
+      background: white;
+      box-shadow: 2px 0 8px rgba(0,0,0,0.2);
+      padding: 1rem;
+      transition: left 0.3s ease;
+      z-index: 1000;
+    }
+
+    #sideMenu.open {
+      left: 0; /* slide in */
+    }
+    #textInput {
+      width: 80%;
+      height: 100px;
+      font-size: 16px;
+    }
+    .word {
+      position: absolute;
+      font-size: 20px;
+      background: white;
+      padding: 2px 6px;
+      border-radius: 4px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      cursor: grab;
+      user-select: none;
+    }
+    .word:active {
+      cursor: grabbing;
+    }
+  </style>
+</head>
+<body>
+  <h2>Enter text below:</h2>
+
+  <!-- Toggle button -->
+<button id="menuToggle">☰ Text Corpus</button>
+
+  <!-- Side menu -->
+  <div id="sideMenu">
+    <h3>Enter text corpus</h3>
+    <textarea id="textInput" placeholder="Paste a paragraph here..."></textarea>
+  </div>
+  <!-- <textarea id="textInput" placeholder="Paste a paragraph here..."></textarea> -->
+
+  <p>Click to spawn words. Drag words around to reposition them.</p>
+
+  <script>
+    let words = [];
+
+    const textInput = document.getElementById("textInput");
+    textInput.addEventListener("input", () => {
+      words = textInput.value
+      .split(/\s+/)
+      .filter(w => w.length > 0);
+    });
+
+    // Toggle menu
+    const menu = document.getElementById("sideMenu");
+    const toggleBtn = document.getElementById("menuToggle");
+    toggleBtn.addEventListener("click", () => {
+      menu.classList.toggle("open");
+    });
+
+    // Spawn a new word when clicking the background
+    document.addEventListener("click", (e) => {
+      // don’t spawn if we clicked on a word or textarea
+      if (e.target.classList.contains("word") || e.target === textInput) return;
+      if (words.length === 0) return;
+
+      const word = words[Math.floor(Math.random() * words.length)];
+      const span = document.createElement("span");
+      span.className = "word";
+      span.textContent = word;
+      span.style.left = e.pageX + "px";
+      span.style.top = e.pageY + "px";
+      document.body.appendChild(span);
+    });
+
+    // Drag logic
+    let draggedEl = null;
+    let offsetX = 0, offsetY = 0;
+
+    document.addEventListener("mousedown", (e) => {
+      if (e.target.classList.contains("word")) {
+        draggedEl = e.target;
+        offsetX = e.clientX - draggedEl.offsetLeft;
+        offsetY = e.clientY - draggedEl.offsetTop;
+      }
+    });
+
+    document.addEventListener("mousemove", (e) => {
+      if (draggedEl) {
+        draggedEl.style.left = (e.clientX - offsetX) + "px";
+        draggedEl.style.top = (e.clientY - offsetY) + "px";
+      }
+    });
+
+    document.addEventListener("mouseup", () => {
+      draggedEl = null;
+    });
+  </script>
+</body>
+</html>
