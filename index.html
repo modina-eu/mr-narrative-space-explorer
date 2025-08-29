@@ -11,7 +11,25 @@
 </head>
 <body>
 
-<button id="menuToggle" style="font-size: 3rem; padding: 1rem 2rem;">☰</button>
+<div id="fallback" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0;
+     background:#fff; color:#000; font-family:sans-serif; font-size:1.2rem;
+     display:flex; flex-direction:column; justify-content:center; align-items:center;
+     text-align:center; padding:2rem; z-index:9999;">
+
+  This demo uses mixed reality tools,<br>
+  and is currently only supported<br>
+  on compatible mobile or tablet devices.<br></br>
+
+  View on moibile <br></br>
+
+  <!-- Image -->
+  <img src="https://modina.eu/wp-content/uploads/2024/09/TaavetJansen_StillMoving-768x768.jpeg"
+       alt="Fallback Image"
+       style="max-width:200px; margin-bottom:1rem;"/>
+
+</div>
+
+<button id="menuToggle" style="font-size: 2rem; padding: 1rem 1rem;">☰</button>
 <div id="sideMenu">
   <h3>Text Corpus</h3>
   <textarea id="textInput">Hello world this is AR text!</textarea>
@@ -21,17 +39,54 @@
   <button id="clearButton">Clear All</button>
 </div>
 
+<!--<a-scene-->
+<!--        embedded-->
+<!--        vr-mode-ui="enabled: false"-->
+<!--        arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: false;"-->
+<!--        renderer="antialias: true; alpha: true"-->
+<!--&gt;-->
+
 <a-scene
+        id="xrScene"
         embedded
         vr-mode-ui="enabled: false"
         arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: false;"
         renderer="antialias: true; alpha: true"
+        webxr="optionalFeatures: hit-test;"
 >
-  <a-entity camera look-controls></a-entity>
+<!--  <a-camera look-controls="enabled: false"></a-camera>-->
 </a-scene>
 
 
-<!-- Your main JS file -->
+<!-- AR Scene (only added if mobile/tablet) -->
+<div id="sceneContainer"></div>
+
+<!--<script type="module">-->
+<!--  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);-->
+<!--  const fallback = document.getElementById('fallback');-->
+<!--  const sceneContainer = document.getElementById('sceneContainer');-->
+
+<!--  if (!isMobile) {-->
+<!--    // Desktop → show fallback, don't create the scene-->
+<!--    fallback.style.display = 'flex';-->
+<!--  } else {-->
+<!--    // Mobile → hide fallback, inject AR scene-->
+<!--    fallback.style.display = 'none';-->
+<!--    sceneContainer.innerHTML = `-->
+<!--        <a-scene-->
+<!--          id="xrScene"-->
+<!--          embedded-->
+<!--          vr-mode-ui="enabled: false"-->
+<!--          arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: false;"-->
+<!--          renderer="antialias: true; alpha: true"-->
+<!--          webxr="optionalFeatures: hit-test;"-->
+<!--        >-->
+<!--          <a-camera look-controls="touchEnabled: false"></a-camera>-->
+<!--        </a-scene>-->
+<!--      `;-->
+<!--  }-->
+<!--</script>-->
+
 <script type="module" src="./main.js"></script>
 
 </body>
