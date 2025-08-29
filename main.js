@@ -56,8 +56,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       left: -320px;
       width: 300px;
       height: 100%;
-      background: white;
-      box-shadow: 2px 0 8px rgba(0,0,0,0.2);
+      background: rgba(255, 255, 255, 0.2);      box-shadow: 2px 0 8px rgba(0,0,0,0.2);
       padding: 1rem;
       transition: left 0.3s ease;
       z-index: 1000;
@@ -66,7 +65,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 
     #sideMenu.open { left: 0; }
 
-    #textInput { width: 100%; height: 100px; font-size: 16px; }
+    #textInput { width: 100%; height: 100px; font-size: 16px; background: rgba(255, 255, 255, 0.4); }
     #clearButton, #clearLastButton { margin-top: 1rem; font-size: 1rem; padding: 0.5rem 1rem; }
   `;
     document.head.appendChild(style);
@@ -190,10 +189,15 @@ window.addEventListener('DOMContentLoaded', async () => {
             const dist = raycaster.ray.origin.distanceTo(pos);
             if (dist < minDist) { minDist = dist; closest = el; }
         }
-        return closest;
+        // return closest;
+        return words[words.length - 1];
     }
 
     let activeWord = null, initialDist = 0, initialAngle = 0, initialScale = 1, initialRotation = 0;
+
+    let initialMid = { x: 0, y: 0 };
+    let initialRotationX = 0;
+    let initialRotationY = 0;
 
     window.addEventListener("touchstart", e => {
         if (e.touches.length === 2) {
@@ -203,12 +207,17 @@ window.addEventListener('DOMContentLoaded', async () => {
 
             const spawned = scene.querySelectorAll(".spawned-word");
             activeWord = findClosestWord(midX, midY, spawned);
+            // activeWord = spawnedWords[spawnedWords.length - 1]; // <-- last added word
 
             if (activeWord) {
                 initialDist = getDistance(t1, t2);
                 initialAngle = getAngle(t1, t2);
                 initialScale = activeWord.object3D.scale.x;
                 initialRotation = activeWord.object3D.rotation.z;
+
+                initialMid = { x: (t1.clientX + t2.clientX)/2, y: (t1.clientY + t2.clientY)/2 };
+                initialRotationX = activeWord.object3D.rotation.x;
+                initialRotationY = activeWord.object3D.rotation.y;
             }
         }
     });
@@ -216,16 +225,25 @@ window.addEventListener('DOMContentLoaded', async () => {
     window.addEventListener("touchmove", e => {
         if (e.touches.length === 2 && activeWord) {
             const [t1, t2] = e.touches;
+
+            // --- Scaling ---
             const newDist = getDistance(t1, t2);
-            const newAngle = getAngle(t1, t2);
-
             activeWord.object3D.scale.setScalar(initialScale * (newDist / initialDist));
-            activeWord.object3D.rotation.z = initialRotation + (newAngle - initialAngle);
+
+            // --- Rotation ---
+            const newAngle = getAngle(t1, t2);
+            activeWord.object3D.rotation.z = initialRotation - (newAngle - initialAngle); // twist
+
+            // Midpoint movement for X/Y rotation
+            const mid = { x: (t1.clientX + t2.clientX)/2, y: (t1.clientY + t2.clientY)/2 };
+            const dx = mid.x - initialMid.x;
+            const dy = mid.y - initialMid.y;
+
+            activeWord.object3D.rotation.x = initialRotationX - dy * 0.01; // up/down → X
+            activeWord.object3D.rotation.y = initialRotationY + dx * 0.01; // left/right → Y
         }
 
-        if (e.touches.length === 1) {
-            e.preventDefault(); // disable one-finger camera drag
-        }
+        if (e.touches.length === 1) e.preventDefault();
     }, { passive: false });
 
     window.addEventListener("touchend", e => {
