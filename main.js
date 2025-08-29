@@ -1,7 +1,6 @@
 window.addEventListener('DOMContentLoaded', () => {
     const scene = document.querySelector("a-scene");
 
-    // Wait for A-Frame to finish loading the scene
     if (!scene.hasLoaded) {
         scene.addEventListener("loaded", () => {
             init();
@@ -13,7 +12,7 @@ window.addEventListener('DOMContentLoaded', () => {
     function init() {
         const THREE = AFRAME.THREE;
 
-        // Style setup (if no external CSS)
+        // Style setup
         const style = document.createElement('style');
         style.textContent = `
       body { margin: 0; overflow: hidden; font-family: sans-serif; }
@@ -52,11 +51,30 @@ window.addEventListener('DOMContentLoaded', () => {
         height: 100px;
         font-size: 16px;
       }
+      
+      #clearButton, #clearLastButton {
+        margin-top: 1rem;
+        font-size: 1rem;
+        padding: 0.5rem 1rem;
+      }
     `;
         document.head.appendChild(style);
 
         const textInput = document.getElementById("textInput");
         let words = textInput.value.split(/\s+/).filter(w => w.length > 0);
+        textInput.addEventListener("input", () => {
+            words = textInput.value.split(/\s+/).filter(w => w.length > 0);
+        });
+
+        // Load external text corpus into textarea and word list
+        fetch('/text.txt')
+            .then(response => response.text())
+            .then(text => {
+                textInput.value = text;
+                words = text.split(/\s+/).filter(w => w.length > 0);
+            })
+            .catch(err => console.error('Failed to load corpus.txt:', err));
+
         textInput.addEventListener("input", () => {
             words = textInput.value.split(/\s+/).filter(w => w.length > 0);
         });
@@ -67,136 +85,88 @@ window.addEventListener('DOMContentLoaded', () => {
             menu.classList.toggle("open");
         });
 
-        let selected = null;
-        let isDragging = false;
-        let initialPinchDistance = null;
-        let initialZ = null;
-        let initialAngle = null;
-        let initialRotationY = null;
+        // Clear all spawned words
+        document.getElementById("clearButton").addEventListener("click", () => {
+            const spawned = scene.querySelectorAll(".spawned-word");
+            spawned.forEach(el => el.parentNode.removeChild(el));
+            spawnedWords.length = 0;
+        });
 
-        // Spawn words on click
-        scene.addEventListener("click", (e) => {
-            console.log("Scene clicked");
+        // Clear last spawned word
+        document.getElementById("clearLastButton").addEventListener("click", () => {
+            const spawned = scene.querySelectorAll(".spawned-word");
+            if (spawned.length === 0) return;
+            const last = spawned[spawned.length - 1];
+            last.parentNode.removeChild(last);
+            spawnedWords.pop();
+        });
 
-            if (e.target.closest && e.target.closest("#sideMenu")) return;
-            if (words.length === 0) {
-                console.warn("Word list is empty");
-                return;
-            }
-
-            const word = words[Math.floor(Math.random() * words.length)];
-
-            const camera = scene.camera;
-            if (!camera) {
-                console.warn("Camera not ready yet");
-                return;
-            }
-
+        // Spawn word on scene click
+        const spawnedWords = [];
+        function getValidSpawnPosition(camera, existingPositions, maxAttempts = 10, minDistance = 0.25) {
+            const THREE = AFRAME.THREE;
             const camPos = new THREE.Vector3();
             const camDir = new THREE.Vector3();
             camera.getWorldPosition(camPos);
             camera.getWorldDirection(camDir);
 
-            // DEBUG: fixed visible position in front of camera
-            camDir.multiplyScalar(2);
-            const spawnPos = camPos.clone().add(camDir);
+            for (let i = 0; i < maxAttempts; i++) {
+                const dist = 2;
+                const basePos = camPos.clone().add(camDir.clone().multiplyScalar(dist));
+
+                // Add some random horizontal and vertical offset
+                const offsetX = (Math.random() - 0.5) * 1.2; // ±0.6m
+                const offsetY = (Math.random() - 0.5) * 1.2; // ±0.6m
+                const spawnPos = basePos.clone().add(new THREE.Vector3(offsetX, offsetY, 0));
+
+                // Check if it's far enough from existing positions
+                const tooClose = existingPositions.some(pos => spawnPos.distanceTo(pos) < minDistance);
+                if (!tooClose) return spawnPos;
+            }
+
+            return null; // No valid position found
+        }
+
+        // Then in your spawn handler replace spawn position calculation with:
+        scene.addEventListener("click", (e) => {
+            if (e.target.closest && e.target.closest("#sideMenu")) return;
+            if (words.length === 0) return;
+
+            const word = words[Math.floor(Math.random() * words.length)];
+            const camera = scene.camera;
+
+            const spawnPos = getValidSpawnPosition(camera, spawnedWords);
+            if (!spawnPos) {
+                console.log("No valid position found, word not spawned");
+                return;
+            }
+
+            spawnedWords.push(spawnPos.clone());
 
             const wrapper = document.createElement("a-entity");
             wrapper.setAttribute("position", `${spawnPos.x} ${spawnPos.y} ${spawnPos.z}`);
+            wrapper.setAttribute("class", "spawned-word");
+            wrapper.object3D.lookAt(camera.position);
 
             const textEl = document.createElement("a-entity");
             textEl.setAttribute("text", {
                 value: word,
                 align: "center",
-                color: "red", // bright red for visibility
-                width: 3
+                color: "black",
+                width: 3,
+                opacity: 0
             });
 
-            const box = document.createElement("a-box");
-            box.setAttribute("scale", "3 1.5 0.2");
-            box.setAttribute("material", "opacity:0; transparent:true");
-            box.classList.add("collider");
+            textEl.setAttribute("animation__fade", {
+                property: "text.opacity",
+                from: 0,
+                to: 1,
+                dur: 800,
+                easing: "easeOutQuad"
+            });
 
             wrapper.appendChild(textEl);
-            wrapper.appendChild(box);
-            wrapper.object3D.lookAt(camPos);
             scene.appendChild(wrapper);
-
-            box.addEventListener("mousedown", () => selectWord(wrapper, textEl));
-            box.addEventListener("touchstart", () => selectWord(wrapper, textEl));
         });
-
-        function selectWord(wrapper, textEl) {
-            selected = wrapper.object3D;
-            selected.textEl = textEl;
-            isDragging = true;
-            textEl.setAttribute("text", "color", "blue");
-        }
-
-        const raycaster = new THREE.Raycaster();
-        const plane = new THREE.Plane();
-        const mouse = new THREE.Vector2();
-
-        function updateMouse(evt) {
-            if (evt.touches && evt.touches.length === 1) {
-                mouse.x = (evt.touches[0].clientX / window.innerWidth) * 2 - 1;
-                mouse.y = -(evt.touches[0].clientY / window.innerHeight) * 2 + 1;
-            } else if (!evt.touches) {
-                mouse.x = (evt.clientX / window.innerWidth) * 2 - 1;
-                mouse.y = -(evt.clientY / window.innerHeight) * 2 + 1;
-            }
-        }
-
-        function moveSelected(evt) {
-            if (!isDragging || !selected) return;
-
-            if (evt.touches && evt.touches.length === 2) {
-                const dx = evt.touches[0].clientX - evt.touches[1].clientX;
-                const dy = evt.touches[0].clientY - evt.touches[1].clientY;
-                const dist = Math.sqrt(dx * dx + dy * dy);
-                const angle = Math.atan2(dy, dx);
-
-                if (initialPinchDistance === null) {
-                    initialPinchDistance = dist;
-                    initialZ = selected.position.clone();
-                    initialAngle = angle;
-                    initialRotationY = selected.rotation.y;
-                } else {
-                    const scale = dist / initialPinchDistance;
-                    const camDir = new THREE.Vector3();
-                    scene.camera.getWorldDirection(camDir);
-                    selected.position.lerp(initialZ.clone().add(camDir.multiplyScalar((scale - 1) * 2)), 0.4);
-
-                    const angleDelta = angle - initialAngle;
-                    selected.rotation.y = initialRotationY + angleDelta * 2;
-                }
-                return;
-            }
-
-            updateMouse(evt);
-            raycaster.setFromCamera(mouse, scene.camera);
-            const camDir = new THREE.Vector3();
-            scene.camera.getWorldDirection(camDir);
-            plane.setFromNormalAndCoplanarPoint(camDir, scene.camera.position.clone().add(camDir.multiplyScalar(1.5)));
-
-            const intersect = new THREE.Vector3();
-            raycaster.ray.intersectPlane(plane, intersect);
-            if (intersect) selected.position.lerp(intersect, 0.5);
-        }
-
-        function endDrag() {
-            if (selected && selected.textEl) {
-                selected.textEl.setAttribute("text", "color", "#333");
-            }
-            selected = null;
-            isDragging = false;
-            initialPinchDistance = null;
-            initialAngle = null;
-        }
-
-        window.addEventListener("mousemove", moveSelected);
-        window.addEventListener("touchmove", moveSelected);
-        window.addEventListener("mouseup", endDrag);
-        window.addEventListener("touchend", endDrag);
     }
 });
