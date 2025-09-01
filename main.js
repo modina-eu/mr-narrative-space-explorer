@@ -96,7 +96,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     // --- Word spawning ---
     const spawnedWords = [];
 
-    function getValidSpawnPosition(camera, existingPositions, maxAttempts = 10, minDistance = 0.25) {
+    function getValidSpawnPosition(camera, existingPositions, maxAttempts = 25, minDistance = 0.10) {
         const camPos = new THREE.Vector3();
         const camDir = new THREE.Vector3();
         camera.getWorldPosition(camPos);
@@ -116,7 +116,7 @@ window.addEventListener('DOMContentLoaded', async () => {
         return null;
     }
 
-    scene.addEventListener("click", e => {
+    scene.addEventListener("pointerdown", e => {
         if (e.target.closest && e.target.closest("#sideMenu")) return;
         if (words.length === 0) return;
 
