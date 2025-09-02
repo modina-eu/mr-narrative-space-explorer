@@ -132,13 +132,22 @@ window.addEventListener('DOMContentLoaded', async () => {
         wrapper.setAttribute("position", `${spawnPos.x} ${spawnPos.y} ${spawnPos.z}`);
         wrapper.setAttribute("class", "spawned-word");
         wrapper.object3D.lookAt(camera.position);
+        // wrapper.object3D.rotateY(Math.PI);
+
+        const randomRotX = (Math.random() - 0.5) * 20;  // ±10°
+        const randomRotY = (Math.random() - 0.5) * 20;  // ±10°
+        const randomRotZ = (Math.random() - 0.5) * 20;  // ±10°
+
+        wrapper.setAttribute("rotation", `${randomRotX} ${randomRotY} ${randomRotZ}`);
+
+        const randomWidth = 2.5 + Math.random() * 1.0;
 
         const textEl = document.createElement("a-entity");
         textEl.setAttribute("text", {
             value: word,
             align: "center",
             color: "black",
-            width: 3,
+            width: randomWidth,
             opacity: 0
         });
 
@@ -199,15 +208,17 @@ window.addEventListener('DOMContentLoaded', async () => {
     let initialRotationX = 0;
     let initialRotationY = 0;
 
+    let gestureActive = false;
+
     window.addEventListener("touchstart", e => {
         if (e.touches.length === 2) {
+            gestureActive = true; // block spawns
             const [t1, t2] = e.touches;
             const midX = (t1.clientX + t2.clientX) / 2;
             const midY = (t1.clientY + t2.clientY) / 2;
 
             const spawned = scene.querySelectorAll(".spawned-word");
             activeWord = findClosestWord(midX, midY, spawned);
-            // activeWord = spawnedWords[spawnedWords.length - 1]; // <-- last added word
 
             if (activeWord) {
                 initialDist = getDistance(t1, t2);
@@ -215,7 +226,7 @@ window.addEventListener('DOMContentLoaded', async () => {
                 initialScale = activeWord.object3D.scale.x;
                 initialRotation = activeWord.object3D.rotation.z;
 
-                initialMid = { x: (t1.clientX + t2.clientX)/2, y: (t1.clientY + t2.clientY)/2 };
+                initialMid = { x: midX, y: midY };
                 initialRotationX = activeWord.object3D.rotation.x;
                 initialRotationY = activeWord.object3D.rotation.y;
             }
@@ -247,7 +258,10 @@ window.addEventListener('DOMContentLoaded', async () => {
     }, { passive: false });
 
     window.addEventListener("touchend", e => {
-        if (e.touches.length < 2) activeWord = null;
+        if (e.touches.length < 2) {
+            activeWord = null;
+            gestureActive = false; // reset
+        }
     });
 
     // --- Mouse drag prevention ---
